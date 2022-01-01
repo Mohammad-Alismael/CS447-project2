@@ -140,59 +140,6 @@ public class dummyClient {
         int completed = 0;
         String string = "";
 
-        int suggestedPort;
-        long suggestedRtt;
-        // rtt comparing
-        if (returnedValueFromPort1[1] < returnedValueFromPort2[1]){
-            suggestedPort = port1;
-            suggestedRtt = returnedValueFromPort1[1];
-        }else {
-            suggestedPort = port2;
-            suggestedRtt = returnedValueFromPort2[1];
-        }
-
-//        System.out.println("returnedValueFromPort1=> " + returnedValueFromPort1[1]);
-//        System.out.println("returnedValueFromPort2=> " + returnedValueFromPort2[1]);
-//        System.out.println("first suggested port =>" + suggestedPort);
-//        System.out.println("first suggested rtt =>" + suggestedRtt);
-
-//        for (int i = 0; i <100; i++) {
-//            ObjectContainer fileDataResponseType = inst.calculateRTTForDataPacker(
-//                    select_file_id,suggestedPort,
-//                    startByteEndByteAr[i]+1,
-//                    startByteEndByteAr[i+1]+1);
-//            long startByte = fileDataResponseType.getResponse().getStart_byte();
-//            long endByte = fileDataResponseType.getResponse().getEnd_byte();
-////            if (startByte == startByteEndByteAr[i]+1 &&
-////                endByte == startByteEndByteAr[i+1]+1 ){
-//
-////            if(getCRC32Checksum(bytes)){
-////                String comingStr = new String(fileDataResponseType.getData());
-////                string += comingStr;
-////            }else {
-////                // request packet again
-////            }
-//               long lastPacketRtt = fileDataResponseType.getRTT();
-//                System.out.println("lastPacketRtt =>" + lastPacketRtt);
-//               if (lastPacketRtt < suggestedRtt){
-//                   suggestedPort = fileDataResponseType.getPort();
-//                   suggestedRtt = lastPacketRtt;
-//               }
-//                System.out.println("suggested port =>" + suggestedPort);
-//                System.out.println("suggested rtt =>" + suggestedRtt);
-////            }else {
-////                // request packet again
-////            }
-//            byte[] bytes = fileDataResponseType.getPacketData();
-//
-//            String comingStr = new String(bytes);
-//            string += comingStr;
-//
-//
-//        }
-
-
-
 
         int bestPort = 0;
         long lastPort1Rtt = 0;
@@ -237,7 +184,7 @@ public class dummyClient {
            }else {
                lastPort2Rtt = lastPacketRtt;
            }
-
+            System.out.println("checksum =>"+ getCRC32Checksum(packet.getPacketData()));
 
             byte[] bytes = packet.getPacketData();
 
@@ -253,44 +200,13 @@ public class dummyClient {
         System.out.println("time elapsed =>"+ c);
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 //        createFile();
-//        writeFile(string);
+        writeFile(string);
 
         // --------------- md5 sum ----------
-//        File file = new File("filename.txt");
-//        MessageDigest mdigest = MessageDigest.getInstance("MD5");
-//        System.out.println(md5sum(mdigest,file));
+        File file = new File("filename.txt");
+        MessageDigest mdigest = MessageDigest.getInstance("MD5");
+        System.out.println(md5sum(mdigest,file));
         // ----------------------------------
 
 //        long RTT = 33;// ot can be considered as latency
@@ -358,7 +274,14 @@ public class dummyClient {
         Date date = new Date();
         long starting = date.getTime();
         ObjectContainer objectContainer = new ObjectContainer();
-        objectContainer.setData(inst.getFileDataSpecific("127.0.0.1",port,file_id,startByte,endByte).getData());
+        ResponseType responseType;
+        do {
+            responseType = inst.getFileDataSpecific("127.0.0.1",port,file_id,startByte,endByte);
+            if (responseType.getFile_id() == file_id){
+                objectContainer.setData(responseType.getData());
+            }
+        }while(responseType.getFile_id() != file_id);
+
         Date date2 = new Date();
         long ending = date2.getTime();
         objectContainer.setRTT(ending - starting);
