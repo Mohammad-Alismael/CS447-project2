@@ -4,10 +4,8 @@ import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Scanner;
 import java.util.zip.CRC32;
@@ -142,6 +140,9 @@ public class dummyClient {
 
 
         int bestPort = 0;
+        ObjectContainer packetTest1 = null;
+        ObjectContainer packetTest2 = null;
+        ObjectContainer lastPacket;
         long lastPort1Rtt = 0;
         long lastPort2Rtt = 0;
         Date d1 = new Date();
@@ -149,11 +150,11 @@ public class dummyClient {
         for (int i = 0; i <howManyDataPackets - 1; i++) {
 
             if (i == 0) {
-                ObjectContainer packetTest1 = inst.calculateRTTForDataPacker(
+                 packetTest1 = inst.calculateRTTForDataPacker(
                         select_file_id, 5000,
                         startByteEndByteAr[i] + 1,
                         startByteEndByteAr[i + 1] + 1);
-                ObjectContainer packetTest2 = inst.calculateRTTForDataPacker(
+                packetTest2 = inst.calculateRTTForDataPacker(
                         select_file_id, 5001,
                         startByteEndByteAr[i] + 1,
                         startByteEndByteAr[i + 1] + 1);
@@ -167,29 +168,43 @@ public class dummyClient {
             System.out.println("lastPort2Rtt => "+ lastPort2Rtt);
             if (lastPort1Rtt < lastPort2Rtt){
                 bestPort = 5000;
+                lastPacket = packetTest1;
             }else {
                 bestPort = 5001;
+                lastPacket = packetTest2;
             }
 
             System.out.println("best port =>"+ bestPort);
 
-            ObjectContainer packet = inst.calculateRTTForDataPacker(
-                    select_file_id, bestPort,
-                    startByteEndByteAr[i] + 1,
-                    startByteEndByteAr[i + 1] + 1);
+            // -----------------------------
+            long packetEnding = 0;
+            ObjectContainer packet;
+            do {
+                long timeout = lastPacket.getTimeout();
+                packet = inst.calculateRTTForDataPacker(
+                        select_file_id, bestPort,
+                        startByteEndByteAr[i] + 1,
+                        startByteEndByteAr[i + 1] + 1);
+                packetEnding = packet.getEnding();
+
+            }while (packetEnding == 0);
+
+
+
             long lastPacketRtt = packet.getRTT();
             System.out.println("lastPacketRtt =>" + lastPacketRtt);
-           if (packet.getPort() == 5000){
-               lastPort1Rtt = lastPacketRtt;
-           }else {
-               lastPort2Rtt = lastPacketRtt;
-           }
-            System.out.println("checksum =>"+ getCRC32Checksum(packet.getPacketData()));
+            if (packet.getPort() == 5000){
+                lastPort1Rtt = lastPacketRtt;
+            }else {
+                lastPort2Rtt = lastPacketRtt;
+            }
 
             byte[] bytes = packet.getPacketData();
 
             String comingStr = new String(bytes);
             string += comingStr;
+
+
 
         }
 
@@ -258,6 +273,18 @@ public class dummyClient {
         return crc32.getValue();
     }
 
+    public static void setTimeout(Runnable runnable, long delay){
+        new Thread(() -> {
+            try {
+                Thread.sleep(delay);
+                runnable.run();
+            }
+            catch (Exception e){
+                System.err.println(e);
+            }
+        }).start();
+    }
+
     public static long[] calculateRTTForFileSize(int file_id, int port) throws IOException {
         Date date = new Date();
         long starting = date.getTime();
@@ -274,16 +301,13 @@ public class dummyClient {
         Date date = new Date();
         long starting = date.getTime();
         ObjectContainer objectContainer = new ObjectContainer();
-        ResponseType responseType;
-        do {
-            responseType = inst.getFileDataSpecific("127.0.0.1",port,file_id,startByte,endByte);
-            if (responseType.getFile_id() == file_id){
-                objectContainer.setData(responseType.getData());
-            }
-        }while(responseType.getFile_id() != file_id);
-
+        ResponseType responseType = inst.getFileDataSpecific("127.0.0.1",port,file_id,startByte,endByte);
+        objectContainer.setResponseType(responseType);
         Date date2 = new Date();
         long ending = date2.getTime();
+        objectContainer.setEnding(ending);
+        // timeout = ending + (ending - starting)
+        // timeout = 2 ending - starting
         objectContainer.setRTT(ending - starting);
         objectContainer.setPort(port);
 
@@ -330,18 +354,14 @@ public class dummyClient {
         long RTT;
         int port;
         byte[] packetData;
-        FileDataResponseType response;
-
+        long timeout;
+        long ending = 0;
+        ResponseType responseType;
 
         public void setRTT(long RTT) {
             this.RTT = RTT;
         }
 
-        public void setData(byte[] data) {
-            this.packetData = data;
-            this.response = new FileDataResponseType(this.packetData);
-
-        }
 
         public long getRTT() {
             return RTT;
@@ -351,8 +371,13 @@ public class dummyClient {
             return packetData;
         }
 
-        public FileDataResponseType getResponse() {
-            return response;
+        public ResponseType getResponseType() {
+            return responseType;
+        }
+
+        public void setResponseType(ResponseType responseType) {
+            this.responseType = responseType;
+            this.packetData = responseType.getData();
         }
 
         public int getPort() {
@@ -361,6 +386,19 @@ public class dummyClient {
 
         public void setPort(int port) {
             this.port = port;
+        }
+
+        public void setEnding(long ending) {
+            this.ending = ending;
+        }
+
+        public long getEnding() {
+            return ending;
+        }
+
+        public long getTimeout() {
+            timeout = ending + RTT;
+            return timeout;
         }
     }
 }
