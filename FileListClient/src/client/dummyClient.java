@@ -147,6 +147,7 @@ public class dummyClient {
         long lastPort2Rtt = 0;
         Date d1 = new Date();
         long a = d1.getTime();
+        int packetsLost = 0;
         for (int i = 0; i <howManyDataPackets - 1; i++) {
 
             if (i == 0) {
@@ -179,27 +180,52 @@ public class dummyClient {
             // -----------------------------
             long packetEnding = 0;
             ObjectContainer packet;
-            do {
-                long timeout = lastPacket.getTimeout();
-                packet = inst.calculateRTTForDataPacker(
-                        select_file_id, bestPort,
-                        startByteEndByteAr[i] + 1,
-                        startByteEndByteAr[i + 1] + 1);
-                packetEnding = packet.getEnding();
+            long timeout = 0;
 
-            }while (packetEnding == 0);
+//            do {
+//                timeout = lastPacket.getTimeout();
+//                packet = inst.calculateRTTForDataPacker(
+//                        select_file_id, bestPort,
+//                        startByteEndByteAr[i] + 1,
+//                        startByteEndByteAr[i + 1] + 1);
+//                packetEnding = packet.getEnding();
+//                if (packetEnding >= timeout || packetEnding == 0){
+//                    packetsLost++;
+//                }
+//            }
+//            while (packetEnding >= timeout || packetEnding == 0);
 
+            RequestingPacketThread requestingPacketThread = new RequestingPacketThread();
+            requestingPacketThread.setSelect_file_id(select_file_id);
+            requestingPacketThread.setStartByte(startByteEndByteAr[i] + 1);
+            requestingPacketThread.setEndByte(startByteEndByteAr[i + 1] + 1);
+            requestingPacketThread.setBestPort(bestPort);
+            Thread thread2 = new Thread();
+            thread2.start();
 
+            CheckPacketLossThread checkPacketLossThread = new CheckPacketLossThread();
+            checkPacketLossThread.setLastPacket(lastPacket);
+            checkPacketLossThread.setSelect_file_id(select_file_id);
+            checkPacketLossThread.setStartByte(startByteEndByteAr[i] + 1);
+            checkPacketLossThread.setEndByte(startByteEndByteAr[i + 1] + 1);
+            checkPacketLossThread.setBestPort(bestPort);
+            checkPacketLossThread.setPacketsLost(packetsLost);
+            // assigning the last packet sent
+            if (checkPacketLossThread.isItLastPacket()){
+                lastPacket = checkPacketLossThread.getPacket();
+            }
+            Thread thread1 = new Thread(checkPacketLossThread);
+            thread1.start();
 
-            long lastPacketRtt = packet.getRTT();
+            long lastPacketRtt = lastPacket.getRTT();
             System.out.println("lastPacketRtt =>" + lastPacketRtt);
-            if (packet.getPort() == 5000){
+            if (lastPacket.getPort() == 5000){
                 lastPort1Rtt = lastPacketRtt;
             }else {
                 lastPort2Rtt = lastPacketRtt;
             }
 
-            byte[] bytes = packet.getPacketData();
+            byte[] bytes = lastPacket.getPacketData();
 
             String comingStr = new String(bytes);
             string += comingStr;
