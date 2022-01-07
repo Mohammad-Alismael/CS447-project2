@@ -113,7 +113,8 @@ public class dummyClient {
 		String ip1=adr1[0];
 		int port1 = Integer.valueOf(adr1[1]);
         int port2 = 5001;
-
+        System.out.println("ip=> "+ ip1);
+        System.out.println("port=> "+ port1);
 		inst.sendInvalidRequest(ip1,port1);
 		inst.getFileList(ip1,port1);
 //        System.out.print("select valid file id> ");
@@ -122,7 +123,6 @@ public class dummyClient {
         System.out.println(String.format("File %d has been selected. Getting the size information...",select_file_id));
 		long[] returnedValueFromPort1 = inst.calculateRTTForFileSize(select_file_id,port1);
 
-        long[] returnedValueFromPort2 = inst.calculateRTTForFileSize(select_file_id,port2);
         System.out.println(String.format("File %d is %d bytes. Starting to download..",select_file_id,returnedValueFromPort1[0]));
 
         int howManyDataPackets = (int) (returnedValueFromPort1[0] / 990);
@@ -182,50 +182,30 @@ public class dummyClient {
             ObjectContainer packet;
             long timeout = 0;
 
-//            do {
-//                timeout = lastPacket.getTimeout();
-//                packet = inst.calculateRTTForDataPacker(
-//                        select_file_id, bestPort,
-//                        startByteEndByteAr[i] + 1,
-//                        startByteEndByteAr[i + 1] + 1);
-//                packetEnding = packet.getEnding();
-//                if (packetEnding >= timeout || packetEnding == 0){
-//                    packetsLost++;
-//                }
-//            }
-//            while (packetEnding >= timeout || packetEnding == 0);
-
-            RequestingPacketThread requestingPacketThread = new RequestingPacketThread();
-            requestingPacketThread.setSelect_file_id(select_file_id);
-            requestingPacketThread.setStartByte(startByteEndByteAr[i] + 1);
-            requestingPacketThread.setEndByte(startByteEndByteAr[i + 1] + 1);
-            requestingPacketThread.setBestPort(bestPort);
-            Thread thread2 = new Thread();
-            thread2.start();
-
-            CheckPacketLossThread checkPacketLossThread = new CheckPacketLossThread();
-            checkPacketLossThread.setLastPacket(lastPacket);
-            checkPacketLossThread.setSelect_file_id(select_file_id);
-            checkPacketLossThread.setStartByte(startByteEndByteAr[i] + 1);
-            checkPacketLossThread.setEndByte(startByteEndByteAr[i + 1] + 1);
-            checkPacketLossThread.setBestPort(bestPort);
-            checkPacketLossThread.setPacketsLost(packetsLost);
-            // assigning the last packet sent
-            if (checkPacketLossThread.isItLastPacket()){
-                lastPacket = checkPacketLossThread.getPacket();
+            do {
+                timeout = lastPacket.getTimeout();
+                packet = inst.calculateRTTForDataPacker(
+                        select_file_id, bestPort,
+                        startByteEndByteAr[i] + 1,
+                        startByteEndByteAr[i + 1] + 1);
+                packetEnding = packet.getEnding();
+                if (packetEnding > timeout || packetEnding == 0){
+                    packetsLost++;
+                }
             }
-            Thread thread1 = new Thread(checkPacketLossThread);
-            thread1.start();
+            while (packetEnding > timeout || packetEnding == 0);
 
-            long lastPacketRtt = lastPacket.getRTT();
+
+
+            long lastPacketRtt = packet.getRTT();
             System.out.println("lastPacketRtt =>" + lastPacketRtt);
-            if (lastPacket.getPort() == 5000){
+            if (packet.getPort() == 5000){
                 lastPort1Rtt = lastPacketRtt;
             }else {
                 lastPort2Rtt = lastPacketRtt;
             }
 
-            byte[] bytes = lastPacket.getPacketData();
+            byte[] bytes = packet.getPacketData();
 
             String comingStr = new String(bytes);
             string += comingStr;
@@ -238,6 +218,7 @@ public class dummyClient {
         long b = d2.getTime();
 
         long c = b -a ;
+        System.out.println("packet losses=>"+packetsLost);
         System.out.println("time elapsed =>"+ c);
 
 
