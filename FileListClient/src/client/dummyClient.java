@@ -100,7 +100,6 @@ public class dummyClient {
         DatagramPacket receivePacket=new DatagramPacket(receiveData, receiveData.length);
         dsocket.receive(receivePacket);
         FileDataResponseType response = new FileDataResponseType(receivePacket.getData());
-//        System.out.println("reciveData array => "+ Arrays.toString(receiveData));
         return response;
     }
 	public static dummyClient inst = new dummyClient();
@@ -142,7 +141,7 @@ public class dummyClient {
         int bestPort = 0;
         ObjectContainer packetTest1 = null;
         ObjectContainer packetTest2 = null;
-        ObjectContainer lastPacket;
+        ObjectContainer lastPacket = null;
         long lastPort1Rtt = 0;
         long lastPort2Rtt = 0;
         Date d1 = new Date();
@@ -180,10 +179,10 @@ public class dummyClient {
             // -----------------------------
             long packetEnding = 0;
             ObjectContainer packet;
-            long timeout = 0;
+            long timeout = lastPacket.getTimeout();
 
             do {
-                timeout = lastPacket.getTimeout();
+                System.out.println("timeout=> " + timeout);
                 packet = inst.calculateRTTForDataPacker(
                         select_file_id, bestPort,
                         startByteEndByteAr[i] + 1,
@@ -192,11 +191,14 @@ public class dummyClient {
                 if (packetEnding > timeout || packetEnding == 0){
                     packetsLost++;
                 }
+                System.out.println("packet ending=> " + packetEnding);
+                System.out.println("cap=>"+ (packetEnding - timeout));
             }
             while (packetEnding > timeout || packetEnding == 0);
 
-
-
+            System.out.println("quiting loop");
+            lastPacket = packet;
+            System.out.println(lastPacket.getEnding() == packet.getEnding());
             long lastPacketRtt = packet.getRTT();
             System.out.println("lastPacketRtt =>" + lastPacketRtt);
             if (packet.getPort() == 5000){
@@ -217,7 +219,7 @@ public class dummyClient {
         Date d2 = new Date();
         long b = d2.getTime();
 
-        long c = b -a ;
+        long c = b - a ;
         System.out.println("packet losses=>"+packetsLost);
         System.out.println("time elapsed =>"+ c);
 
@@ -315,6 +317,7 @@ public class dummyClient {
         objectContainer.setEnding(ending);
         // timeout = ending + (ending - starting)
         // timeout = 2 ending - starting
+        objectContainer.setTimeout(2*ending - starting);
         objectContainer.setRTT(ending - starting);
         objectContainer.setPort(port);
 
@@ -404,8 +407,11 @@ public class dummyClient {
         }
 
         public long getTimeout() {
-            timeout = ending + RTT;
             return timeout;
+        }
+
+        public void setTimeout(long timeout) {
+            this.timeout = timeout;
         }
     }
 }
