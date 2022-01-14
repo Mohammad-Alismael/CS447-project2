@@ -245,9 +245,9 @@ public class dummyClient {
             System.out.println("packets for 5001=>"+ packetsForPort2.size());
             System.out.println("packets loss for 5000=>"+ packetsLostForPort1.size());
             System.out.println("packets loss for 5001=>"+ packetsLostForPort2.size());
-//            System.out.println("lastPort1Rtt => "+ lastPort1Rtt);
-//            System.out.println("lastPort2Rtt => "+ lastPort2Rtt);
-//            System.out.println("best port =>"+ bestPort);
+            System.out.println("lastPort1Rtt => "+ lastPort1Rtt);
+            System.out.println("lastPort2Rtt => "+ lastPort2Rtt);
+            System.out.println("best port =>"+ bestPort);
             System.out.println("-----------------------------------------------------");
             packet = inst.calculateRTTForDataPacker(
                     select_file_id, bestPort,
